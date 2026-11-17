@@ -36,6 +36,16 @@ The configured timezone (`Africa/Nairobi` by default) is used for PHP-generated 
 5. Visit `http://localhost/analytics/test.html`, browse the Home, Stories, and About pages, and switch tabs to test active-time tracking.
 6. Open `http://localhost/analytics/dashboard.php` and log in.
 
+## Run a local demo from VS Code without MySQL
+This local-only mode uses PHP's built-in development server and SQLite; it does not require the XAMPP Control Panel or a MySQL server. It requires PHP CLI with `pdo_sqlite` enabled.
+
+1. In the VS Code PowerShell terminal, run `powershell -NoProfile -ExecutionPolicy Bypass -File .\analytics\start-local.ps1`.
+2. Open `http://127.0.0.1:8000/test.html`, browse between pages, then view summaries at `http://127.0.0.1:8000/dashboard.php` or individual events at `http://127.0.0.1:8000/logs.php`.
+3. Stop the server with Ctrl+C.
+
+The local dashboard only shows visits sent to this computer. It does not collect visitors from a publicly hosted website. Its SQLite data is stored in the system temporary directory.
+The activity log shows page views, active-time heartbeats, and page-hidden/closed events; clicks and form submissions are not tracked.
+
 ## Add it to your website
 Put this before `</head>` on every page (header include / layout file):
 
