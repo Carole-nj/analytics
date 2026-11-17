@@ -13,7 +13,7 @@ Tracks, for any website you add it to:
 | `track.js` | The script you add to your website pages |
 | `track.php` | Receives events from `track.js` and saves them |
 | `dashboard.php` | Password-protected reports |
-| `test.html` | Demo page to try it out |
+| `test.html` | Small multi-page demo site for testing the tracker |
 
 ## Configuration
 Edit the settings at the top of `config.php`:
@@ -33,7 +33,7 @@ The configured timezone (`Africa/Nairobi` by default) is used for PHP-generated 
 2. Start **Apache** and **MySQL** in XAMPP.
 3. Open phpMyAdmin → **Import** → choose `schema.sql` → Go.
 4. Edit `config.php`: set your database credentials, choose a strong `DASHBOARD_PASSWORD`, and set `IP_SALT` to a long, random secret.
-5. Visit `http://localhost/analytics/test.html`, stay a few seconds, switch tabs, come back.
+5. Visit `http://localhost/analytics/test.html`, browse the Home, Stories, and About pages, and switch tabs to test active-time tracking.
 6. Open `http://localhost/analytics/dashboard.php` and log in.
 
 ## Add it to your website
