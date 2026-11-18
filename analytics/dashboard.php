@@ -135,6 +135,7 @@ th{color:var(--muted);font-weight:600}.muted{color:var(--muted)}.scroll{overflow
         <a href="?days=<?= $d ?>" class="<?= $d === $days ? 'on' : '' ?>"><?= $lab ?></a>
       <?php endforeach; ?>
     </span>
+    <a class="logout" href="logs.php">Activity log</a>
     <a class="logout" href="?logout=1">Log out</a>
   </div>
 </header>
