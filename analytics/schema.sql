@@ -45,3 +45,21 @@ CREATE TABLE IF NOT EXISTS pageviews (
     INDEX idx_session (session_id),
     INDEX idx_viewed (viewed_at)
 ) ENGINE=InnoDB;
+
+-- One row per tracked event, including page views, time updates, clicks and form submits.
+CREATE TABLE IF NOT EXISTS activity_logs (
+    id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+    event_id       CHAR(36)     NOT NULL UNIQUE,
+    event_type     VARCHAR(20)  NOT NULL,
+    visitor_id     CHAR(36)     NOT NULL,
+    session_id     CHAR(36)     NOT NULL,
+    pageview_id    CHAR(36)     NOT NULL,
+    url            VARCHAR(500) NOT NULL,
+    title          VARCHAR(255) NULL,
+    event_target   VARCHAR(500) NULL,
+    time_spent     INT          NOT NULL DEFAULT 0,
+    recorded_at    DATETIME     NOT NULL,
+    INDEX idx_recorded (recorded_at),
+    INDEX idx_log_session (session_id),
+    INDEX idx_log_type (event_type)
+) ENGINE=InnoDB;
