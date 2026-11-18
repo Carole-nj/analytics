@@ -3,7 +3,7 @@
  *   <script src="/analytics/track.js" defer></script>
  * Optional: data-endpoint="https://yoursite.com/analytics/track.php"
  *
- * Tracks: unique visitors, sessions, page views, active time, link/button clicks
+ * Tracks: unique visitors, sessions, page views, page duration, link/button clicks
  * and form submissions. Form values and visible labels are never collected.
  */
 (function () {
@@ -48,8 +48,13 @@
   store('va_session', sess);
 
   var pageviewId = uuid();
+  var pageStartedAt = Date.now();
   var activeSeconds = 0;
-  var lastSent = -1;
+  var lastSentDuration = -1;
+
+  function pageDuration() {
+    return Math.max(0, Math.floor((Date.now() - pageStartedAt) / 1000));
+  }
 
   function safeTarget(value) {
     try {
@@ -78,7 +83,7 @@
       url: location.pathname,
       title: document.title,
       referrer: safeReferrer(),
-      time_spent: activeSeconds,
+      time_spent: pageDuration(),
       event_target: eventTarget || ''
     });
     try {
@@ -96,18 +101,25 @@
     } catch (e) {}
   }
 
-  // Count active time once per second, only while the tab is visible
+  // Send periodic duration updates while visible; elapsed duration includes hidden time.
   setInterval(function () {
     if (document.visibilityState === 'visible') {
       activeSeconds++;
       sess.last = Date.now();
       if (activeSeconds % 5 === 0) store('va_session', sess);
-      if (activeSeconds % PING_EVERY === 0) { lastSent = activeSeconds; send('ping'); }
+      if (activeSeconds % PING_EVERY === 0) {
+        lastSentDuration = pageDuration();
+        send('ping');
+      }
     }
   }, 1000);
 
   function flush() {
-    if (activeSeconds !== lastSent) { lastSent = activeSeconds; send('end', true); }
+    var duration = pageDuration();
+    if (duration !== lastSentDuration) {
+      lastSentDuration = duration;
+      send('end', true);
+    }
   }
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden') flush();
