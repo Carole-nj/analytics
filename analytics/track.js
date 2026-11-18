@@ -3,8 +3,8 @@
  *   <script src="/analytics/track.js" defer></script>
  * Optional: data-endpoint="https://yoursite.com/analytics/track.php"
  *
- * Tracks: unique visitors, sessions, page views and ACTIVE time on each page
- * (time only counts while the tab is visible).
+ * Tracks: unique visitors, sessions, page views, active time, link/button clicks
+ * and form submissions. Form values and visible labels are never collected.
  */
 (function () {
   'use strict';
@@ -51,16 +51,35 @@
   var activeSeconds = 0;
   var lastSent = -1;
 
-  function send(type, useBeacon) {
+  function safeTarget(value) {
+    try {
+      var target = new URL(value, location.href);
+      return (target.origin === location.origin ? '' : target.host) + target.pathname;
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function safeReferrer() {
+    try {
+      return document.referrer ? new URL(document.referrer).origin : '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function send(type, useBeacon, eventTarget) {
     var payload = JSON.stringify({
       type: type,
+      event_id: uuid(),
       visitor_id: visitorId,
       session_id: sess.id,
       pageview_id: pageviewId,
-      url: location.pathname + location.search,
+      url: location.pathname,
       title: document.title,
-      referrer: document.referrer,
-      time_spent: activeSeconds
+      referrer: safeReferrer(),
+      time_spent: activeSeconds,
+      event_target: eventTarget || ''
     });
     try {
       if (useBeacon && navigator.sendBeacon) {
@@ -94,6 +113,22 @@
     if (document.visibilityState === 'hidden') flush();
   });
   window.addEventListener('pagehide', flush);
+
+  document.addEventListener('click', function (event) {
+    if (!(event.target instanceof Element)) return;
+    var element = event.target.closest('a,button,input[type="button"],input[type="submit"],input[type="image"],[role="button"]');
+    if (!element) return;
+    var target = element.tagName.toLowerCase() === 'a'
+      ? safeTarget(element.href)
+      : element.tagName.toLowerCase();
+    send('click', true, target);
+  }, true);
+
+  document.addEventListener('submit', function (event) {
+    if (!(event.target instanceof HTMLFormElement)) return;
+    var method = (event.target.method || 'get').toUpperCase();
+    send('form_submit', true, method + ' ' + safeTarget(event.target.action));
+  }, true);
 
   // Record the page view
   send('view');
