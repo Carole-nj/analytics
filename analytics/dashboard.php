@@ -175,7 +175,7 @@ th{color:var(--muted);font-weight:600}.muted{color:var(--muted)}.scroll{overflow
   </div>
 
   <div class="card"><h2>Recent visits</h2><div class="scroll"><table>
-    <tr><th>Started</th><th>Visitor</th><th>Time on site</th><th>Pages</th><th>Entry page</th><th>Source</th><th>Device</th><th>Visit #</th></tr>
+    <tr><th>Started (EAT)</th><th>Visitor</th><th>Time on site</th><th>Pages</th><th>Entry page</th><th>Source</th><th>Device</th><th>Visit #</th></tr>
     <?php foreach ($recent as $r): ?>
       <tr>
         <td><?= e($r['started_at']) ?></td>
