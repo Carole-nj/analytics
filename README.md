@@ -27,7 +27,7 @@ Edit the settings at the top of `config.php`:
 | `ONLINE_WINDOW_MIN` | Number of minutes without activity after which a visitor is no longer counted as online. |
 | `ALLOWED_ORIGIN` | Origin permitted to send tracking requests. Use `*` for local testing; in production, set it to the full origin of the site using the tracker, such as `https://www.example.com`. |
 
-The configured timezone (`Africa/Nairobi` by default) is used for PHP-generated timestamps and dashboard date ranges. Change it in `config.php` if your reporting should use a different timezone.
+The configured timezone (`Africa/Nairobi` by default) is used for PHP-generated timestamps and dashboard date ranges.
 
 ## Setup on XAMPP
 1. Copy this folder to `C:\xampp\htdocs\analytics\`.
