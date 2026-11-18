@@ -3,7 +3,7 @@
 Tracks, for any website you add it to:
 - **Who visits**: unique visitors, new vs returning, device / browser / OS, traffic source
 - **How long they stay**: active time per page and per visit (only counts while the tab is visible)
-- **What they do**: page views, top pages, bounce rate, who is online right now
+- **What they do**: page views, link/button clicks, form submissions, top pages, bounce rate, who is online right now
 
 ## Files
 | File | Purpose |
@@ -13,6 +13,7 @@ Tracks, for any website you add it to:
 | `track.js` | The script you add to your website pages |
 | `track.php` | Receives events from `track.js` and saves them |
 | `dashboard.php` | Password-protected reports |
+| `logs.php` | Password-protected log of the latest 200 activity events |
 | `test.html` | Demo page to try it out |
 
 ## Configuration
@@ -32,9 +33,9 @@ The configured timezone (`Africa/Nairobi` by default) is used for PHP-generated 
 1. Copy this folder to `C:\xampp\htdocs\analytics\`.
 2. Start **Apache** and **MySQL** in XAMPP.
 3. Open phpMyAdmin → **Import** → choose `schema.sql` → Go.
-4. Edit `config.php`: set your database credentials, choose a strong `DASHBOARD_PASSWORD`, and set `IP_SALT` to a long, random secret.
+4. Edit `config.php`: set your database credentials, choose a strong `DASHBOARD_PASSWORD`, and set `IP_SALT` to a long, random secret. If this is an existing installation, import `schema.sql` again to create the new activity log table.
 5. Visit `http://localhost/analytics/test.html`, stay a few seconds, switch tabs, come back.
-6. Open `http://localhost/analytics/dashboard.php` and log in.
+6. Open `http://localhost/analytics/dashboard.php` and log in, then choose **Activity log** to see individual events.
 
 ## Add it to your website
 Put this before `</head>` on every page (header include / layout file):
@@ -54,6 +55,7 @@ If the tracker lives on a different domain, add the endpoint:
 - A random visitor ID is stored in the browser (`localStorage`). Same ID on return = returning visitor.
 - A **session** (visit) ends after 30 minutes of inactivity.
 - Every second the tab is visible counts as active time; a heartbeat is sent every 15 s and when the page is closed or hidden.
+- Click events record the clicked link destination or button type; form events record the method and action path. Form values and visible labels are never collected. Page URLs omit query strings.
 - Bots and crawlers are ignored. Browsers with Do Not Track enabled are not tracked.
 
 ## Before going live
@@ -61,5 +63,5 @@ If the tracker lives on a different domain, add the endpoint:
 - Serve over HTTPS.
 - Use a dedicated MySQL user instead of `root`.
 - Raw IPs are never stored (only a salted hash). If your visitors are in the EU/Kenya, mention analytics in your privacy policy (Kenya Data Protection Act applies).
-- To keep the database small, delete old rows occasionally, e.g.
-  `DELETE FROM pageviews WHERE viewed_at < NOW() - INTERVAL 1 YEAR;`
+- To keep the database small, delete old rows occasionally from both `pageviews` (`viewed_at`) and `activity_logs` (`recorded_at`), e.g.
+  `DELETE FROM activity_logs WHERE recorded_at < NOW() - INTERVAL 1 YEAR;`
