@@ -36,8 +36,9 @@ $logs = db()->query(
     body{font:15px system-ui,sans-serif;max-width:1200px;margin:36px auto;padding:0 20px;color:#172033;background:#f5f7fb}
     h1{margin-bottom:6px}.note{color:#586579;margin:0 0 20px}
     section{background:white;border:1px solid #e5e9f0;border-radius:10px;padding:18px;overflow:auto}
-    table{width:100%;border-collapse:collapse;text-align:left}
+    table{width:fit-content;max-width:100%;border-collapse:collapse;text-align:left}
     th,td{padding:10px;border-bottom:1px solid #e5e9f0;vertical-align:top}
+    th:nth-child(2),td:nth-child(2){max-width:150px;overflow-wrap:anywhere}
     th{font-size:13px;color:#68758a;white-space:nowrap}td{font-size:14px}
     .detail{display:block;color:#68758a;font-size:12px;margin-top:3px}
     a{color:#4338ca}
