@@ -66,6 +66,12 @@ function format_duration(int $seconds): string
     return intdiv($seconds, 3600) . 'h ' . intdiv($seconds % 3600, 60) . 'm';
 }
 
+function format_eat_time(string $utcTime): string
+{
+    $utc = new DateTimeImmutable($utcTime, new DateTimeZone('UTC'));
+    return $utc->setTimezone(new DateTimeZone('Africa/Nairobi'))->format('Y-m-d H:i:s');
+}
+
 if ($path === '/track.php') {
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
         http_response_code(405);
@@ -219,9 +225,9 @@ if ($path === '/dashboard.php') {
       </section>
       <section>
         <h2>Recent sessions</h2>
-        <table><thead><tr><th>Started (UTC)</th><th>Visitor</th><th>Entry page</th><th>Page views</th><th>Active time</th></tr></thead><tbody>
+        <table><thead><tr><th>Started (EAT)</th><th>Visitor</th><th>Entry page</th><th>Page views</th><th>Active time</th></tr></thead><tbody>
         <?php foreach ($recentSessions as $row): ?>
-          <tr><td><?= h($row['started_at']) ?></td><td><?= h(substr($row['visitor_id'], 0, 8)) ?></td>
+          <tr><td><?= h(format_eat_time($row['started_at'])) ?></td><td><?= h(substr($row['visitor_id'], 0, 8)) ?></td>
           <td><?= h($row['entry_page']) ?></td><td><?= (int)$row['page_views'] ?></td>
           <td><?= h(format_duration((int)$row['duration_seconds'])) ?></td></tr>
         <?php endforeach; ?>
@@ -267,19 +273,19 @@ if ($path === '/logs.php') {
     </head>
     <body>
       <h1>Website activity log</h1>
-      <p class="note">Showing the latest <?= count($logs) ?> events (maximum 200), timestamps in UTC.
+      <p class="note">Showing the latest <?= count($logs) ?> events (maximum 200), timestamps shown in East Africa Time (EAT).
         Form values and visible labels are never collected.</p>
       <p><a href="/dashboard.php">Back to dashboard</a> · <a href="/test.html">Open the demo site</a></p>
       <section>
         <table>
-          <thead><tr><th>Time (UTC)</th><th>Activity</th><th>Visitor / session</th><th>Page</th><th>Target</th><th>Active time</th></tr></thead>
+          <thead><tr><th>Time (EAT)</th><th>Activity</th><th>Visitor / session</th><th>Page</th><th>Target</th><th>Active time</th></tr></thead>
           <tbody>
           <?php foreach ($logs as $row): ?>
             <tr>
-              <td><?= h($row['recorded_at']) ?></td>
+              <td><?= h(format_eat_time($row['recorded_at'])) ?></td>
               <td><?= h($eventLabels[$row['event_type']] ?? $row['event_type']) ?></td>
               <td><?= h(substr($row['visitor_id'], 0, 8)) ?><span class="detail">Session <?= h(substr($row['session_id'], 0, 8)) ?></span></td>
-              <td><?= h($row['url']) ?><span class="detail"><?= h($row['title']) ?></span></td>
+              <td><?= h(trim((string)$row['title']) !== '' ? $row['title'] : ($row['url'] ?: 'Untitled page')) ?></td>
               <td><?= h($row['event_target'] ?? '') ?></td>
               <td><?= h(format_duration((int)$row['time_spent'])) ?></td>
             </tr>
