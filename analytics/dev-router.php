@@ -31,16 +31,26 @@ $pdo->exec(
     );
     CREATE TABLE IF NOT EXISTS activity_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id TEXT UNIQUE,
         event_type TEXT NOT NULL,
         visitor_id TEXT NOT NULL,
         session_id TEXT NOT NULL,
         pageview_id TEXT NOT NULL,
         url TEXT NOT NULL,
         title TEXT NOT NULL,
+        event_target TEXT,
         time_spent INTEGER NOT NULL DEFAULT 0,
         recorded_at TEXT NOT NULL
     );'
 );
+$activityColumns = array_column($pdo->query('PRAGMA table_info(activity_logs)')->fetchAll(), 'name');
+if (!in_array('event_id', $activityColumns, true)) {
+    $pdo->exec('ALTER TABLE activity_logs ADD COLUMN event_id TEXT');
+}
+if (!in_array('event_target', $activityColumns, true)) {
+    $pdo->exec('ALTER TABLE activity_logs ADD COLUMN event_target TEXT');
+}
+$pdo->exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_activity_event_id ON activity_logs (event_id)');
 
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 
@@ -75,9 +85,19 @@ if ($path === '/track.php') {
             exit;
         }
     }
+    $eventId = $data['event_id'] ?? '';
+    if ($eventId === '') {
+        $hex = bin2hex(random_bytes(16));
+        $eventId = substr($hex, 0, 8) . '-' . substr($hex, 8, 4) . '-' . substr($hex, 12, 4)
+            . '-' . substr($hex, 16, 4) . '-' . substr($hex, 20, 12);
+    }
+    if (!is_string($eventId) || !preg_match($uuidPattern, $eventId)) {
+        http_response_code(400);
+        exit;
+    }
 
     $type = $data['type'] ?? '';
-    if (!in_array($type, ['view', 'ping', 'end'], true)) {
+    if (!in_array($type, ['view', 'ping', 'end', 'click', 'form_submit'], true)) {
         http_response_code(400);
         exit;
     }
@@ -86,12 +106,13 @@ if ($path === '/track.php') {
     $sessionId = $data['session_id'];
     $pageviewId = $data['pageview_id'];
     $timeSpent = max(0, min(86400, (int)($data['time_spent'] ?? 0)));
+    $eventTarget = substr(is_string($data['event_target'] ?? null) ? $data['event_target'] : '', 0, 500);
     $now = gmdate('Y-m-d H:i:s');
+    $url = substr((string)($data['url'] ?? '/'), 0, 500);
+    $title = substr((string)($data['title'] ?? ''), 0, 255);
 
     $pdo->beginTransaction();
     if ($type === 'view') {
-        $url = substr((string)($data['url'] ?? '/'), 0, 500);
-        $title = substr((string)($data['title'] ?? ''), 0, 255);
         $pdo->prepare(
             'INSERT INTO visitors (visitor_id, first_seen, last_seen) VALUES (?, ?, ?)
              ON CONFLICT(visitor_id) DO UPDATE SET last_seen = excluded.last_seen'
@@ -111,9 +132,7 @@ if ($path === '/track.php') {
                 'UPDATE sessions SET page_views = page_views + 1, last_activity = ? WHERE session_id = ?'
             )->execute([$now, $sessionId]);
         }
-    } else {
-        $url = substr((string)($data['url'] ?? '/'), 0, 500);
-        $title = substr((string)($data['title'] ?? ''), 0, 255);
+    } elseif ($type === 'ping' || $type === 'end') {
         $pdo->prepare(
             'UPDATE pageviews SET time_spent = MAX(time_spent, ?)
              WHERE pageview_id = ? AND session_id = ?'
@@ -127,13 +146,18 @@ if ($path === '/track.php') {
         )->execute([$now, $sessionId, $sessionId]);
         $pdo->prepare('UPDATE visitors SET last_seen = ? WHERE visitor_id = ?')
             ->execute([$now, $visitorId]);
+    } else {
+        $pdo->prepare('UPDATE sessions SET last_activity = ? WHERE session_id = ?')
+            ->execute([$now, $sessionId]);
+        $pdo->prepare('UPDATE visitors SET last_seen = ? WHERE visitor_id = ?')
+            ->execute([$now, $visitorId]);
     }
 
     $pdo->prepare(
-        'INSERT INTO activity_logs
-            (event_type, visitor_id, session_id, pageview_id, url, title, time_spent, recorded_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-    )->execute([$type, $visitorId, $sessionId, $pageviewId, $url, $title, $timeSpent, $now]);
+        'INSERT OR IGNORE INTO activity_logs
+            (event_id, event_type, visitor_id, session_id, pageview_id, url, title, event_target, time_spent, recorded_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    )->execute([$eventId, $type, $visitorId, $sessionId, $pageviewId, $url, $title, $eventTarget, $timeSpent, $now]);
     $pdo->commit();
 
     http_response_code(204);
@@ -212,13 +236,15 @@ if ($path === '/dashboard.php') {
 
 if ($path === '/logs.php') {
     $logs = $pdo->query(
-        'SELECT event_type, visitor_id, session_id, url, title, time_spent, recorded_at
+        'SELECT event_type, visitor_id, session_id, url, title, event_target, time_spent, recorded_at
          FROM activity_logs ORDER BY id DESC LIMIT 200'
     )->fetchAll();
     $eventLabels = [
         'view' => 'Page view',
         'ping' => 'Active-time update',
         'end' => 'Page hidden / closed',
+        'click' => 'Link / button click',
+        'form_submit' => 'Form submitted',
     ];
     ?>
     <!doctype html>
@@ -242,11 +268,11 @@ if ($path === '/logs.php') {
     <body>
       <h1>Website activity log</h1>
       <p class="note">Showing the latest <?= count($logs) ?> events (maximum 200), timestamps in UTC.
-        The tracker records page views and active-time updates; it does not record clicks or form input.</p>
+        Form values and visible labels are never collected.</p>
       <p><a href="/dashboard.php">Back to dashboard</a> · <a href="/test.html">Open the demo site</a></p>
       <section>
         <table>
-          <thead><tr><th>Time (UTC)</th><th>Activity</th><th>Visitor / session</th><th>Page</th><th>Active time</th></tr></thead>
+          <thead><tr><th>Time (UTC)</th><th>Activity</th><th>Visitor / session</th><th>Page</th><th>Target</th><th>Active time</th></tr></thead>
           <tbody>
           <?php foreach ($logs as $row): ?>
             <tr>
@@ -254,10 +280,11 @@ if ($path === '/logs.php') {
               <td><?= h($eventLabels[$row['event_type']] ?? $row['event_type']) ?></td>
               <td><?= h(substr($row['visitor_id'], 0, 8)) ?><span class="detail">Session <?= h(substr($row['session_id'], 0, 8)) ?></span></td>
               <td><?= h($row['url']) ?><span class="detail"><?= h($row['title']) ?></span></td>
+              <td><?= h($row['event_target'] ?? '') ?></td>
               <td><?= h(format_duration((int)$row['time_spent'])) ?></td>
             </tr>
           <?php endforeach; ?>
-          <?php if (!$logs): ?><tr><td colspan="5">No activity yet. Browse the demo to create log entries.</td></tr><?php endif; ?>
+          <?php if (!$logs): ?><tr><td colspan="6">No activity yet. Browse the demo to create log entries.</td></tr><?php endif; ?>
           </tbody>
         </table>
       </section>
