@@ -15,9 +15,16 @@ if (!is_array($data)) { http_response_code(400); exit; }
 $uuidRe = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i';
 $type = $data['type'] ?? '';
 foreach (['visitor_id', 'session_id', 'pageview_id'] as $k) {
-    if (!isset($data[$k]) || !preg_match($uuidRe, $data[$k])) { http_response_code(400); exit; }
+    if (!isset($data[$k]) || !is_string($data[$k]) || !preg_match($uuidRe, $data[$k])) { http_response_code(400); exit; }
 }
-if (!in_array($type, ['view', 'ping', 'end'], true)) { http_response_code(400); exit; }
+$eventId = $data['event_id'] ?? '';
+if ($eventId === '') {
+    $hex = bin2hex(random_bytes(16));
+    $eventId = substr($hex, 0, 8) . '-' . substr($hex, 8, 4) . '-' . substr($hex, 12, 4)
+        . '-' . substr($hex, 16, 4) . '-' . substr($hex, 20, 12);
+}
+if (!is_string($eventId) || !preg_match($uuidRe, $eventId)) { http_response_code(400); exit; }
+if (!in_array($type, ['view', 'ping', 'end', 'click', 'form_submit'], true)) { http_response_code(400); exit; }
 
 $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 500);
 // Ignore bots and crawlers
@@ -48,15 +55,16 @@ $visitorId   = $data['visitor_id'];
 $sessionId   = $data['session_id'];
 $pageviewId  = $data['pageview_id'];
 $timeSpent   = max(0, min(86400, (int)($data['time_spent'] ?? 0)));
+$eventTarget = substr(is_string($data['event_target'] ?? null) ? $data['event_target'] : '', 0, 500);
+$url         = substr((string)($data['url'] ?? '/'), 0, 500);
+$title       = substr((string)($data['title'] ?? ''), 0, 255);
 $nowStr      = date('Y-m-d H:i:s');
 
 try {
     $pdo = db();
+    $pdo->beginTransaction();
 
     if ($type === 'view') {
-        $url   = substr((string)($data['url'] ?? '/'), 0, 500);
-        $title = substr((string)($data['title'] ?? ''), 0, 255);
-
         // Referrer host (empty = direct). Ignore referrals from our own site.
         $refHost = '';
         $ref = (string)($data['referrer'] ?? '');
@@ -69,8 +77,6 @@ try {
 
         [$device, $browser, $os] = parse_ua($ua);
         $ipHash = hash('sha256', IP_SALT . ($_SERVER['REMOTE_ADDR'] ?? ''));
-
-        $pdo->beginTransaction();
 
         // Visitor
         $pdo->prepare(
@@ -99,9 +105,7 @@ try {
             $pdo->prepare('UPDATE sessions SET page_views = page_views + 1, last_activity = ? WHERE session_id = ?')
                 ->execute([$nowStr, $sessionId]);
         }
-
-        $pdo->commit();
-    } else {
+    } elseif ($type === 'ping' || $type === 'end') {
         // ping / end: update time spent on this page and the session total
         $pdo->prepare('UPDATE pageviews SET time_spent = GREATEST(time_spent, ?) WHERE pageview_id = ? AND session_id = ?')
             ->execute([$timeSpent, $pageviewId, $sessionId]);
@@ -114,8 +118,21 @@ try {
         )->execute([$nowStr, $sessionId, $sessionId]);
 
         $pdo->prepare('UPDATE visitors SET last_seen = ? WHERE visitor_id = ?')->execute([$nowStr, $visitorId]);
+    } else {
+        // Clicks and form submissions count as activity but never include form values or labels.
+        $pdo->prepare('UPDATE sessions SET last_activity = ? WHERE session_id = ?')
+            ->execute([$nowStr, $sessionId]);
+        $pdo->prepare('UPDATE visitors SET last_seen = ? WHERE visitor_id = ?')
+            ->execute([$nowStr, $visitorId]);
     }
 
+    $pdo->prepare(
+        'INSERT IGNORE INTO activity_logs
+            (event_id, event_type, visitor_id, session_id, pageview_id, url, title, event_target, time_spent, recorded_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?)'
+    )->execute([$eventId, $type, $visitorId, $sessionId, $pageviewId, $url, $title, $eventTarget, $timeSpent, $nowStr]);
+
+    $pdo->commit();
     http_response_code(204);
 } catch (Throwable $e) {
     if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
