@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     visitor_id       CHAR(36)     NOT NULL,
     started_at       DATETIME     NOT NULL,
     last_activity    DATETIME     NOT NULL,
-    duration_seconds INT          NOT NULL DEFAULT 0,   -- active time on site
+    duration_seconds INT          NOT NULL DEFAULT 0,   -- elapsed duration across page views
     page_views       INT          NOT NULL DEFAULT 0,
     entry_page       VARCHAR(500) NULL,
     referrer_host    VARCHAR(255) NULL,
@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS pageviews (
     url         VARCHAR(500) NOT NULL,
     title       VARCHAR(255) NULL,
     viewed_at   DATETIME     NOT NULL,
-    time_spent  INT          NOT NULL DEFAULT 0,        -- seconds the page was visible
+    time_spent  INT          NOT NULL DEFAULT 0,        -- elapsed seconds from page load to exit
     INDEX idx_session (session_id),
     INDEX idx_viewed (viewed_at)
 ) ENGINE=InnoDB;
