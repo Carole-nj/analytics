@@ -52,18 +52,18 @@ $eventLabels = [
 </head>
 <body>
   <h1>Website activity log</h1>
-  <p class="note">Latest <?= count($logs) ?> events (maximum 200). Form values and visible labels are not collected.</p>
+  <p class="note">Latest <?= count($logs) ?> events (maximum 200), timestamps in East Africa Time (EAT). Form values and visible labels are not collected.</p>
   <p><a href="dashboard.php">Back to dashboard</a></p>
   <section>
     <table>
-      <thead><tr><th>Time</th><th>Activity</th><th>Visitor / session</th><th>Page</th><th>Target</th><th>Active time</th></tr></thead>
+      <thead><tr><th>Time (EAT)</th><th>Activity</th><th>Visitor / session</th><th>Page</th><th>Target</th><th>Active time</th></tr></thead>
       <tbody>
       <?php foreach ($logs as $row): ?>
         <tr>
           <td><?= e($row['recorded_at']) ?></td>
           <td><?= e($eventLabels[$row['event_type']] ?? $row['event_type']) ?></td>
           <td><?= e(substr($row['visitor_id'], 0, 8)) ?><span class="detail">Session <?= e(substr($row['session_id'], 0, 8)) ?></span></td>
-          <td><?= e($row['url']) ?><span class="detail"><?= e($row['title']) ?></span></td>
+          <td><?= e(trim((string)$row['title']) !== '' ? $row['title'] : ($row['url'] ?: 'Untitled page')) ?></td>
           <td><?= e($row['event_target'] ?? '') ?></td>
           <td><?= e(fmt_dur($row['time_spent'])) ?></td>
         </tr>
