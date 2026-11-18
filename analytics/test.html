@@ -276,7 +276,8 @@
       activePage.classList.add('is-active');
       activePage.setAttribute('aria-labelledby', 'page-title');
       activePage.querySelector('h1').id = 'page-title';
-      document.title = activePage.querySelector('h1').textContent + ' | Fieldnotes';
+      var pageName = activePage.getAttribute('data-page');
+      document.title = pageName.charAt(0).toUpperCase() + pageName.slice(1) + ' | Fieldnotes';
 
       pages.forEach(function (page) {
         if (page !== activePage) page.setAttribute('aria-hidden', 'true');
