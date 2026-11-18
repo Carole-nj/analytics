@@ -27,7 +27,7 @@ Edit the settings at the top of `config.php`:
 | `ONLINE_WINDOW_MIN` | Number of minutes without activity after which a visitor is no longer counted as online. |
 | `ALLOWED_ORIGIN` | Origin permitted to send tracking requests. Use `*` for local testing; in production, set it to the full origin of the site using the tracker, such as `https://www.example.com`. |
 
-The configured timezone (`Africa/Nairobi` by default) is used for PHP-generated timestamps and dashboard date ranges. Change it in `config.php` if your reporting should use a different timezone.
+The configured timezone (`Africa/Nairobi` by default) is used for PHP-generated timestamps and dashboard date ranges. The local demo stores UTC timestamps and displays them converted to East Africa Time (EAT).
 
 ## Setup on XAMPP
 1. Copy this folder to `C:\xampp\htdocs\analytics\`.
@@ -45,7 +45,7 @@ This local-only mode uses PHP's built-in development server and SQLite; it does 
 3. Stop the server with Ctrl+C.
 
 The local dashboard only shows visits sent to this computer. It does not collect visitors from a publicly hosted website. Its SQLite data is stored in the system temporary directory.
-The activity log shows page views, active-time heartbeats, page-hidden/closed events, link/button clicks, and form submissions.
+The activity log shows page views, active-time heartbeats, page-hidden/closed events, link/button clicks, and form submissions. Event times are displayed in EAT, and pages are identified by their document title.
 
 ## Add it to your website
 Put this before `</head>` on every page (header include / layout file):
