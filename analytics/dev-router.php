@@ -206,16 +206,16 @@ if ($path === '/dashboard.php') {
     <body>
       <h1>Local analytics</h1>
       <p class="note">Test data stored on this computer only. This dashboard is not collecting public website visitors.</p>
-      <p><a href="/test.html">Open the demo site</a> · <a href="/logs.php">View activity log</a></p>
+      <p><a href="/test.html">Open the demo site</a> · <a href="/logs.php">View page visit log</a></p>
       <div class="cards">
         <div class="card"><div class="value"><?= $visitors ?></div><div class="label">Unique browsers</div></div>
         <div class="card"><div class="value"><?= $sessions ?></div><div class="label">Sessions</div></div>
         <div class="card"><div class="value"><?= $pageviews ?></div><div class="label">Page views</div></div>
-        <div class="card"><div class="value"><?= h(format_duration($averageDuration)) ?></div><div class="label">Average active time / session</div></div>
+        <div class="card"><div class="value"><?= h(format_duration($averageDuration)) ?></div><div class="label">Average session duration</div></div>
       </div>
       <section>
         <h2>Top pages</h2>
-        <table><thead><tr><th>Page</th><th>Views</th><th>Average active time</th></tr></thead><tbody>
+        <table><thead><tr><th>Page</th><th>Views</th><th>Average duration</th></tr></thead><tbody>
         <?php foreach ($topPages as $row): ?>
           <tr><td><?= h($row['url']) ?></td><td><?= (int)$row['views'] ?></td>
           <td><?= h(format_duration((int)round((float)$row['average_time']))) ?></td></tr>
@@ -242,16 +242,9 @@ if ($path === '/dashboard.php') {
 
 if ($path === '/logs.php') {
     $logs = $pdo->query(
-        'SELECT event_type, visitor_id, session_id, url, title, event_target, time_spent, recorded_at
-         FROM activity_logs ORDER BY id DESC LIMIT 200'
+        'SELECT url, title, time_spent, viewed_at
+         FROM pageviews ORDER BY viewed_at DESC LIMIT 200'
     )->fetchAll();
-    $eventLabels = [
-        'view' => 'Page view',
-        'ping' => 'Active-time update',
-        'end' => 'Page hidden / closed',
-        'click' => 'Link / button click',
-        'form_submit' => 'Form submitted',
-    ];
     ?>
     <!doctype html>
     <html lang="en">
@@ -259,7 +252,7 @@ if ($path === '/logs.php') {
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta http-equiv="refresh" content="5">
-      <title>Website activity log</title>
+      <title>Page visit log</title>
       <style>
         body{font:15px system-ui,sans-serif;max-width:1200px;margin:36px auto;padding:0 20px;color:#172033;background:#f5f7fb}
         h1{margin-bottom:6px}.note{color:#586579;margin:0 0 20px}
@@ -272,25 +265,21 @@ if ($path === '/logs.php') {
       </style>
     </head>
     <body>
-      <h1>Website activity log</h1>
-      <p class="note">Showing the latest <?= count($logs) ?> events (maximum 200), timestamps shown in East Africa Time (EAT).
-        Form values and visible labels are never collected.</p>
+      <h1>Page visit log</h1>
+      <p class="note">Showing the latest <?= count($logs) ?> page visits (maximum 200), timestamps in EAT. Duration is elapsed time until the page is left, including background-tab time.</p>
       <p><a href="/dashboard.php">Back to dashboard</a> · <a href="/test.html">Open the demo site</a></p>
       <section>
         <table>
-          <thead><tr><th>Time (EAT)</th><th>Activity</th><th>Visitor / session</th><th>Page</th><th>Target</th><th>Active time</th></tr></thead>
+          <thead><tr><th>Time (EAT)</th><th>Page</th><th>Duration</th></tr></thead>
           <tbody>
           <?php foreach ($logs as $row): ?>
             <tr>
-              <td><?= h(format_eat_time($row['recorded_at'])) ?></td>
-              <td><?= h($eventLabels[$row['event_type']] ?? $row['event_type']) ?></td>
-              <td><?= h(substr($row['visitor_id'], 0, 8)) ?><span class="detail">Session <?= h(substr($row['session_id'], 0, 8)) ?></span></td>
+              <td><?= h(format_eat_time($row['viewed_at'])) ?></td>
               <td><?= h(trim((string)$row['title']) !== '' ? $row['title'] : ($row['url'] ?: 'Untitled page')) ?></td>
-              <td><?= h($row['event_target'] ?? '') ?></td>
               <td><?= h(format_duration((int)$row['time_spent'])) ?></td>
             </tr>
           <?php endforeach; ?>
-          <?php if (!$logs): ?><tr><td colspan="6">No activity yet. Browse the demo to create log entries.</td></tr><?php endif; ?>
+          <?php if (!$logs): ?><tr><td colspan="3">No page visits yet. Browse the demo to create log entries.</td></tr><?php endif; ?>
           </tbody>
         </table>
       </section>
